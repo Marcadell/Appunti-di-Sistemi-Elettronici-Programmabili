@@ -1,0 +1,16 @@
+#File di compilazione LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+#File di backup eventuali
+*~
+*.bak
+*.tmp
+
+#cartelle vscode
+.vscode/

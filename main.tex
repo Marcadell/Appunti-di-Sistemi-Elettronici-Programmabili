@@ -1,0 +1,405 @@
+\documentclass{book}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\title{Sistemi elettronici programmabili}
+\author{Marco C}
+\date{March 2025}
+
+\begin{document}
+
+\maketitle
+
+\section*{Disclaimer}
+    Questi appunti sono da prendere come riferimento per fare l'esame, ma per una conoscenza approfondita è meglio consultare il libro di Napoli da cui ho preso le informazioni, xoxo.
+\chapter{Flusso di progetto per circuiti digitali}
+
+\section{Front-end e back-end di un flusso di progetto}
+    Il flusso di progetto per circuiti digitali programmabili ha una faccia del genere:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt3img1.png}
+        \caption{Flusso di progetto di un circuito digitale. Le fasi cerchiate in rettangolare le fa il progettista mentre quelle più rotonde sono semiautoatiche.}
+    \end{figure}
+    La parte di front-end è orientata alla descrizione del circuito, implementazione degli algoritmi e alla simulazione dello stesso. Essa si conclude con la definizione dei blocchi logici da utilizzare, che dipendono dall'offerta della tecnologia che si sta usando, unico caso in cui c'è dipendenza del front-end dalla tecnologia. Il back-end si occupa invece della progettazione e della verifica relativa alla struttura del circuito, che è la progettazizione delle maschere per ASIC, lo stampo della PCB per i discreti eccetera.
+\section{Analisi delle specifiche}
+    In questa fase si definiscono le specifiche del circuito da progettare. Per esempio in un device dedito al processing di immagini queste potrebbero essere la risoluzione, la profondità di bit etc...; successivamente si analizzano i costraint dati dal cliente quali possono essere area, tempi di propagazione e potenza dissipata. In particolare l'area dipende anche dalla tecnologia di FPGA scelta per il prototipo, perché si avranno limitazioni circa i blocchi digitali disponibili per organizzare il progetto. La terza cosa da fare è progettare in che modo verificare come si comporta il circuito in determinate situazioni e fare il test per la presenza di errori. Questa cosa viene fatta tramite l'introduzione dei test vector/test case, cioè input di cui si conosce l'output previsto, il quale si confronta con quello effettivo per verificare la presenza di errori.
+\section{Descrizione funzionale}
+    A questo punto bisogna utilizzare un HDL (Hardware Description Language) per organizzare il progetto in uno schema a blocchi. Si tenga conto che non tutti i costrutti dell'HDL sono direttamente traducibili in circuito digitale. A questo punto si fanno uno o più \textit{test bench} scritti in HDL. Un test bench corrisponde all'inieizione all'interno del circuito di un test vector e confrontare le uscite con i risultati attesi.
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=1.1\linewidth]{img/chapt3img2.png}
+    \end{figure}
+\section{Descrizione RTL}
+    In questa fase tutti i blocchi circuitali, anche quelli non sintetizzabili, devono essere espressi come circuito. Allora si sfrutta l'HDL con cui si è già fatto il "design" ideale del progetto per ottimizzare le parti inutili e cercare di tradurre i blocchi logici non direttamente sintetizzabili. In questa parte l'HDL si occupa di tradurre i blocchi logici in costrutti formati da operatori, shift register eccetera. Inoltre, vengono definiti il numero di cicli di clock necesari per compiere determiante operazioni e assieme a quali sezioni del circuito è opportuno ripetere (tecnica di ridondanza). Per vedere se tutto è andato bene, si procede con la simulazione RTL per verificare che la transizione da HDL a circuito digitale è andato a buon fine. Spesso l'analisi funzionale e quella RTL sono fatte con lo stesso software in quanto è di solito compito del programmatore scegliere esplicitamente di effettuare quella funzionale, rendendo de facto simulazione RTL e funzionali sinonimi. La RTL è più veloce e non da informazioni sui parametri del circuito quali potenza o area occupata, ma fornisce dati circa il throughput, la latenza e la sincronizzazione tra i blocchi.
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.95\linewidth]{img/chapt3img3.png}
+    \end{figure}
+\section{Sintesi}
+    Nella fase di sintesi i blocchi funzionali del circuito digitale sono tradotti in componenti digitali. È divisa in due fasi. La prima, detta di \textit{translate}, traduce i blocchi logici in componenti digitali totalmente generici che possono essere implementati da qualunque device FPGA che utilizza liberie standard per circuiti VLSI. La seconda fase, detta di \textit{mapping}, associa ai componenti generici i componenti che sono effettivamente disponibili all'interno del dispositivo FPGA in esame. A volte c'è corrispondenza diretta, come un flip-flop per rappresentare un elemento ad un bit di memoria, mentre altre volte bisogna tradurre un blocco non sintetizzabile in altri modi, per esempio utilizzando una memoria per tradurre una logica combinatoria complessa. Alla fine della fiera si ottiene una \textit{netlist}, ovvero una lista di connessioni sottoforma di file ASCII, che è un elenco degli ingressi, uscite e dei fili che collegano i vari componenti.
+\section{Simulazione post-sintesi}
+    La simulazione post-sintesi viene fatta per:
+    \begin{itemize}
+        \item Individuare eventuali bug nella netlist, cioè errori nella fase di translate o di mapping
+        \item Avere informazioni sul consumo di potenza, tenendo conto dei glitch (commutazioni multiple dello stesso segnale) e dei tempi di propagazione, che in questa fase possono misurati
+        \item Se si è utilizzato il clock gating\footnote{In computer architecture, clock gating is a popular power management technique used in many synchronous circuits for reducing dynamic power dissipation, by removing the clock signal when the circuit, or a subpart of it, is not in use or ignores clock signal.}, questo si può simulare.
+\section{Place and route}
+    Durante il place and route vengono piazzti (place) i componenti del circuito nelle zone a cui appartengono ed effettuati i collegamenti (route) fra di essi. Questa fase è dispendiosa in termini di potenza di calcolo perché, non esistendo algoritmi in grado di minimizzare l'area occupata e la lunghezza dei cavi conoscendo soltanto i pezzi da utilizzare, quello che si fa è try and error finché non si riduce man mano l'area. Questa cosa richiede uno sforzo di calcolo assurdo ed al progettista è chiesto soltanto, in questa fase praticamente automatica, di indicare quanto tempo e potenza di calcolo dare al programma per trovare il setup migliore, cioè quando questo deve sforzarsi. Tipicamente il massimo sforzo per il Place and Route si fa alla fine, quando si è sicuri di non dover modificare più niente. Come sempre si fa alla fine una simulazione post-P\&R che segnala eventuali errori nelle connessioni. In questa simulazione qua l'accuratezza con cui si può calcolare potenza e tempi di propagazione è massima, perché gli effetti parassiti dei componenti si conoscono. Il check sul tempo di propagazione massimo, che si ha per il percorso critico, si fa durante la \textit{time-analysis}, mentre quello per la potenza dissipata durante il \textit{power-analysis}. Se il circuito non passa una di queste due, bisogna tornare indietro alla fase di progetto RTL e rivalutare le proprie scelte.
+\section{Generazione del file FPGA e programmazione}
+    Se tutto è andato bene con la post-P\&R analysis, si può generare il bitstream e caricarlo all'interno della FPGA, che viene programmato automagicamente.
+    \end{itemize}
+
+\chapter{Field Programmable Gate Array}
+    Gli FPGA sono dispositivi elettronici programmabili, chiamati così perché derivanti dai Gate Array e programmabili direttamente sul proprio tavolo da lavoro. L'utlizzo della parola "programmare" riferita ad un FPGA è fuorviante, in quanto un progettista FPGA si occupa di organizzare i collegamenti del circuito e la scelta dei componenti, ottenendo come risultato un circuito digitale, a differenza di qualcuno che programma in linguaggi come il C o l'assembly, per i quali "programmare" significa elencare una serie di istruzioni da fare eseguire ad un computer.
+\section{Struttura di un FPGA}
+    Ci sono tre layout principali per la struttura di un FPGA:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img1.png}
+    \end{figure}
+    La disposizione a matrice e quella a righe sono alquanti simili e differiscono solo per il fatto che nella prima i percorsi logici si intrecciano ad ogni intersezione, mentre per la seconda sono compresi fra due righe di elementi logici. La terza, quella gerarchica, è fondamentalmente diversa. La struttura è a righe, ma ogni blocco logico ha una sottostruttura a righe di media complessità logica costituita da blocchi logici a loro volta costituiti da una sottostruttura e così via.\\
+    Le FPGA si possono distinguere anche a seconda del fatto che siano programmabili una sola o più volte, oppure che siano volatili e non:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img2.png}
+        \caption{I vari modi per distinguere un FPGA}
+    \end{figure}\\
+    Un esempio di FPGA programmabile più volte e volatile è quello basato su SRAM. Il bitstream viene caricato e ogni celletta di SRAM conserva un dato che identifica se una connessione deve essere aperta o chiusa tramite porta di trasmissione CMOS.
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img3.png}
+    \end{figure}\\
+    È necessaria una memoria flash esterna per conservare la configurazione, che viene caricata in memoria dinamica ogni volta.\\
+    Un esempio invece di non-volatile OTP è la tecnologia FPGA basata su antifuse. In questo caso si crea un piccolo vuoto nel canale di via tra due layer di metal e dove si vuole fare il collegamento si applica una ddp abbastanza forte che scioglie la via e collega i due layer di metal.
+    \newpage
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img4.png}
+    \end{figure}
+    Un esempio invece di FPGA non-volatile e riprogrammabile è dato da quelli basati su flash switch:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img5.png}
+    \end{figure}
+\section{Architettura di celle logiche programmabili}
+    Al fine di garantire la massima flessibilità, gli elementi logici che costituiscono un FPGA sono anch'essi programmabili. Ci sono due tipi di architetture per le celle logiche: quelle basate su multiplexer e quelle basate su Look Up Tables (LUT). \\
+    Le FPGA che utilizziamo noi sono basate su Look-up table. Una LUT è un blocco logico ad $n$ ingressi ed una uscita. La LUT ha un elemento di memoria per conservare $2^{n}$ bit che sono i possibili che può assumere una funzione booleana ad $n$ ingressi, potendo implementare potenzialmente $2^{2^{n}}$ funzioni diverse.
+    \\ \\
+    Un moderno FPGA si compone dei seguenti elementi:
+    \begin{itemize}
+        \item I \textbf{Logic Element} (LE), implementati come abbiamo detto in MUX o LUT. Possono essere piccoli blocchi RAM, ROM, shift register...
+        \item I \textbf{blocchi RAM} (BRAM), slice di unità o decine di kilobyte di RAM
+        \item I \textbf{blocchi DSP}, cioè quelli per il digital signal processing come accumulatori, addizionatori, moltiplicatori...
+        \item CPU, che può essere \textit{soft}, cioè implementata tramite i blocchi logici del dispositivo, oppure \textit{hard}, fatta ad-hoc per il device. Le prime sono più lente ma possono essere customizzate a seconda delle necessità.
+    \end{itemize}
+    Sulla parte periferica del chip FPGA troviamo:
+    \begin{itemize}
+        \item I \textbf{banchi I/O} che sono altamente programmabili per tutte le stronzate che ti passano in mente: gestione della reiezione del rumore, direzione dell'IO, valori di corrente eccetera.
+        \item Il \textbf{clock management}, che si occupa di trasferire il segnale di clock all'FPGA. Il CM può ritardare, moltiplicare e fare altre operazioni sul segnale di clock.
+        \item \textbf{High speed IO} per il trasferimento seriale ad alta velocità.
+    \end{itemize}
+\section{Caratteristiche delle celle logiche programmabili}
+    Gli elementi sequenziali sono d'importanza fondamentale. Sebbene si possa pensare in un primo momento di poter implementare un flip flop tramite inverttitori classici e collegamenti programmabile, ciò riduce il numero di celle logiche disponibili e da molta difficoltà nella gestione del timing. Allora i programmatori di FPGA preferiscono implementare i Flip-Flop nativamente nei loro logic element (LE). Questi flip-flop infatti devono essere pianamente programmabili e si deve poter decidere su quali fronti di clock farli lavorare, se usare un segnale S/R eccetera.\\ \\
+    Generalmente gli LE implementano funzioni combiantorie. In alcune schede gli LE sono chiamati Slice. Dunque ogni Slice/LE ha delle LUT e dei flip-flop:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.95\linewidth]{img/chapt4img6.png}
+    \end{figure}
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=1\linewidth]{img/chapt4img8.png}
+    \end{figure}
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=1\linewidth]{img/chapt4img9.png}
+    \end{figure}
+    \newpage
+    Le FPGA ad alte prestazioni implementano gli ALM (Adaptive Logic Module):
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img10.png}
+    \end{figure} \\
+    Questo tipo di elemnti logici hanno al loro interno LUT adattabili, nel caso di Altera si può scegliere di utilizzare LUT4, LUT5 o LUT6 collegando in cascata delle LUT4. \\ \\
+    Gli addizionatori nei circuiti digitali sono comuni e si può implementare un adder da un bit utilizzando una LUT4 divisa in due LUT3, una per il risultato della somma di due bit e l'altra per il riporto. Mettendone in cascata $n$, si ottiene un addizionatore ad $n$ bit.
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img11.png}
+    \end{figure}
+    Negli ALM ci sono circuiti addizionatori dedicati, per garantire migliore flessibilità. Ci sono anche circuiti per la propagazione del riporto (carry-propagation), dunque connettendo $n$ ALM in cascata è possibile creare addizionatori di $2n$ bit. \\ \\
+    Le look up table si comportano come piccole memorie RAM e possono essere programmate tramite i registri ProgDIN, ProgCLK, ProgWR, i quali una volta programmata la cella vengono disabilitati, facendo sì che la LUT si comporti come un circuito combinatorio ordinario. Si possono usare allora le LUT come memorie RAM distribuite, i cui bit possono essere scritti a runtime tramite i registri citati sopra.
+    \begin{itemize}
+        \item \textbf{ProgDin}: registro dato da memorizzare nella RAM.
+        \item \textbf{ProgCLK}: registro per temporizzare operazioni di lettura e scrittura.
+        \item \textbf{ProgRW}: registro per segnalare stato di lettura o scrittura.
+    \end{itemize}
+    \newpage
+    Le LUT possono essere utilizzate anche per fare RAM dual port e performare lettura e scrittura in contemporanea:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt4img12.png}
+    \end{figure}
+    \\ \\ 
+    Per la costruzione di registri a scorrimento, tipicamente si mettono in serie dei flip-flop. Altera ottimizza questa cosa con una circuiteria ad-hoc per le cascade di ALM, mentre altre schede permettono di creare shift-register programmando le varie RAM basate su LUT per tale scopo. In generale con una LUT da $n$ bit si può implementare un registro a scorrimento di $2^{n}$ locazioni di memoria.
+\chapter{Circuiti combinatori}
+    \section{Multiplexer}
+        Un multiplexer (abbreviato in MUX) è un circuito combinatorio. Un circuito combinatorio è un circuito la cui uscita dipende esclusivamente dagli ingressi e non dallo stato corrente del circuito, come invece accade nei circuiti sequenziali. Per questa loro proprietà, i circuiti combinatori non implementano alcun tipo di retroazione. \\ \\
+        Un MUX, nella sua forma più generale possibile, è un circuito che ha in ingresso $n$ stringhe da $p$ bit. Il mux instrada uno tra gli $n$ ingressi tramite $p$ bit di selezione e viene detto \textit{completo} se $2^{m} = n$. Per implementare un mux di stringhe a $p$ bit basta mettere in parallelo $p$ mux $n:1$, ognuno controllato dagli stessi $m$ bit e con le uscite preelvate in parallelo:
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chap6img1.png}
+        \end{figure} \\ \\
+        Il MUX  $2:1$, il più utilizzato nei circuiti digitali, equivale al costrutto "if-else". Un esempio lo abbiamo con il calcolo del valore assoluto. Se $A$ è il valore del numero ed $S$ il segno di $A$, il MUX $2:1$ implementa una funzione del genere (avendo dato gli ingressi opportuni):
+        \begin{equation}
+            Y = A\bar{S}+\bar{A}S
+        \end{equation}
+        cosicché se $A$ è positivo (ed il bit di segno è zero, cioè "+") allora ritorna $A$, altrimenti ritorna il valore di $-A = \bar{A}$, che è positivo se $A$ è negativo, così come il bit di segno $S$ che sarà uguale ad $1$.
+    \section{Decoder binario}
+        Il decoder binario è un altro circuito altrettanto utilizzato e permette di convertire l'espressione di numeri da un formato a quello binario:
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chap6img2.png}
+        \end{figure}
+        Un utilizzo pratico di un decoder binario lo si trova nelle memorie, dove vengono utilizzati per selezionare le colonne e le righe della matrice di locazioni, che corrisponde all'attivazione dei MOS di riga e di colonna.
+    \section{Encoder}
+        Un codificatore (encoder) è un qualsiasi circuito che ha in ingresso un codice e lo traduce in un altra rappresentazione. La lunghezza della stringa d'uscita è tipicamente minore di quella d'ingresso, ragion per la quale un encoder non può associare ad ogni ingresso un valore unico di uscita. Per tale ragione, si deve agire in uno dei seguenti modi: o si garantisce che in ingresso al circuito non ci siano ingressi non ammessi oppure si fa in modo che tali ingressi, quando presenti, siano scartati, aggiungendo dei bit all'uscita che ne certifichino l'ammissibilità.\\
+        Un esempio di encoder è quello \textit{one-hot}, che ritorna (in binario) la posizione dell'unico uno all'interno della stringa:
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chap6img3.png}
+        \end{figure} \\ \\
+        L'encoder può essere anche a priorità e viene chiamato in quel caso \textit{priority encoder}. Un priority encoder risolve il problema degli ingressi non validi con più di un bit alto cambiando l'uscita associata alla configurazione con un solo bit alto che ha la priorità maggiore. Se per esempio entra $110$ ed $100$ ha la priorità su $010$, allora l'uscita sarà quella di $100$. Questo meccanismo trova utilizzo nella gestione delle interrupt dei processori, dove il concetto di priorità è di fondamentale importanza. L'enoder a priorità ha lo stesso simbolo dell'encoder normale, eccetto per il segnale di "Idle" disegnato sopra. Il segnale di "Idle" serve a notificare quand'è che l'encoder ha tutti zero in ingresso.
+    \section{Comparatore}
+        Un comparatore è un circuito che fa un confronto fra due numeri. I comparatori che implementano confronti come l'uguaglianza fra due numeri sono semplici da realizzare, mentre la complessità cresce più che linearmente con l'aumentare dei bit se si prendono comparatori che verificano che un numero sia maggiore di un altro. I comparatori sono di fondamentale importanza nell'implementazione dei cicli, del confronto fra chiavi di sicurezza nella crittografia eccetera. \\ \\
+        Un esempio è il comparatore che verifica che un numero sia maggiore di zero. La funzione booleana che implementa questa cosa è:
+        \begin{equation}
+            IsZero = \bar{I_{0}}\bar{I_{1}} \cdots \bar{I_{n-1}} = \overline{I_{0}+I_{1}+ \cdots + I_{n-1}}
+        \end{equation}
+        In VLSI la forma NOR è preferita (cioè come prodotto di negati) perché utilizza $2n$ transistor per una funzione ad $n$ ingressi, contro i $4n+2$ utilizzati dalla logica NAND. \\ \\
+        Se invece si vuole effettuare il confronto con una costante $C$ diversa da zero, bisogna tener conto di caso per caso. Se la costante, una stringa di $n$ bit, ha meno di $(n+1)/2$ alti, conviene ancora utilizzare la logica NOR, altrimenti è conveniente operare in NAND negando le uscite necessarie. Supponiamo per esempio che $C=110$, allora la funzione da implementare è:
+        \begin{equation}
+            Y = I_{2}\cdot I_{1} \cdot \bar{I_{0}} = \overline{\bar{I}_{2}+\bar{I_{2}} +I_{0}}
+        \end{equation}
+        In questo caso conviene una NAND per esempio, mentre se fosse stato, ad esempio, $C=10001$ sarebbe convenuta una NOR. \\ \\
+        Per verificare che due segnali $A$ e $B$ siano uguali, bisogna fare il prodotto delle XNOR fra i bit di $A$ e $B$:
+        \begin{equation}
+            Y = \Pi _{i} ^{n} (A_{i-1} \odot B_{i-1})
+        \end{equation}
+        dove ricordiamo la XNOR è il negato della NOR, dunque è alta se i due bit sono uguali.\\
+        Per relazioni maggiore/minore, ad esempio $A>B$, il circuito è più complesso e richiede oltre s XNOR e AND svariate porte OR.
+    \section{Full adder}
+        Un full-adder, cioè un addizionatore completo, è un circuito che ha in ingresso tre bit, $A$, $B$, $C_{in}$, con $C_{in}$ il riporto in ingresso, e da in uscita su due bit la somma $S$ e il riporto di uscita $C_{out}$. Ovviamente il bit somma ha più peso del carry di uscita e dunque il full-adder viene spesso chiamato compressore $3:2$, perché comprime un informazione su $3$ bit di peso unitario in una su due bit di peso diverso.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chap6img4.png}
+        \end{figure}
+\chapter{Introduzione al Verilog}
+    \section{Caratteristiche di un HDL}
+        Il Verilog è un HDL e dunque permette la descrizione di circuiti digitali e di comportamento, a seconda del livello di astrazione con cui si lavora. Utilizzare un HDL conviene proprio perché si possono descrivere funzioni booleane nel modo più low level possibile, così come sono molto utili i costrutti per la descrizione comportamentale (behavioral constructs). Assieme al VHDL, il Verilog è uno standard industriale per la progettazione di FPGA, CPLD ed ASIC. \\ \\
+        Cosa rende un HDL diverso (e più adatto per il low level) da un linguaggio di programmazione software è la possibilità di eseguire istruzioni in parallelo, cosa fondamentale nei circuiti e non presente nei linguaggi software che sono rigorosamente sequenziali. Gli HDL possono essere utilizzati per simulare il comportamento del circuito includendo anche i ritardi, tramite costrutti di simulazione, inoltre sono capaci di effettuare la sintesi circuitali tramite appositi costrutti di sintesi. \\ \\
+        L'HDL può essere utilizzato anche per il calcolo di vettori di test, ma quando si passa alla descrizione RTL bisogna ripulire il codice Verilog da costrutti non sintetizzabili. Nelle fasi di sintesi, P\&R e avanti non viene più scritto codice HDL. \\ \\
+    \newpage
+    \section{Come si descrive un circuito}
+        Tutti i file verilog che descrivono circuiti iniziano con la keyword $module$.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt7img1.png}
+            \caption{Initial è un esempio di costrutto non sintetizzabile che va rimosso in fase di sintesi}
+        \end{figure} \\
+    Un esempio facile è il decoder 2:4
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt7img2.png}
+    \end{figure}
+    Prima di scrivere il codice va sempre fatto lo schema a blocchi. Partiamo per esempio dalla tabella di verità e ricaviamo:
+    \begin{align}
+        y_{0} = \bar{a_{0}}\bar{a_{1}} \\
+        y_{1} = a_{0}\bar{a_{1}} \\
+        y_{2} = \bar{a_{0}}a_{1} \\
+        y_{3} = a_{0}a_{1} \\
+    \end{align}
+    \\ e quindi la implementiamo all'interno del codice. Allora mi servono 4 LUT per fare le AND da due e 2 LUT per fare gli inverter. \newpage
+    Lo stesso circuito si può descrivere con i bus array, definendo quindi due vettori $A$ ed $Y$ che sono i bus rispettivamente di entrata ed uscita:
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{img/chapt7img3.png}
+    \end{figure}
+
+    \section{Descrizione gerarchica}
+        La descrizione gerarchica è conveniente perché è complicato lavorare con codici lunghi e anche perché i pezzi che compongono la struttura totale possono essere riutilizzati\footnote{equivalente della modularità per programmi software}. \\
+        La keyword che consente di richiamare all'interno di un top level (circuito a gerarchia maggiore) un circuito lower level (un sottocircuito più elementare) é:
+        $$
+        <module name> <istance name>(<interface \ ports>)
+        $$
+        Il modulo da mette è quello lower level, poi va istanziato un oggetto che ha le caratteristiche di quel modulo e infine vanno messe le interface ports, che descrivono in che modo si collegano i segnali IO del modulo istanziato. \newpage
+    \section{Blocchi procedurali}
+        I costrutti verilog sono concorrenti: l'esecuzione dei costrutti è parallela e l'ordine con cui vengono dichiarati i costrutti non variano il funzionamento. Le istruzioni all'interno del blocco procedurale, però, sono sequenziali. Post-sintesi non c'è più il blocco procedurale ma un circuito.\\
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.60\linewidth]{img/chapt7img4.png}
+        \end{figure}
+        Un segnale prodotto da un blocco procedurale deve essere definito come \textit{reg}, ma ciò non vuol dire che \textit{reg} sia un registro, semplicemente è un segnale che esce da un blocco procedurale.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/chapt7img5.png}
+        \end{figure}
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/chapt7img6.png}
+        \end{figure} \newpage
+        Un esempio dove è corretto utilizzare una sensitivity list incompleta è quello del flip flop di tipo D sul fronte di salita. I segnali d'ingresso sono il dato ed il clock, ma l'ingresso può variare soltanto sul fronte di salita del clock (cosa stabilità all'interno del verilog con la keyword $posedge$):
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/chapt7img7.png}
+        \end{figure}
+
+    \section{Test bench}
+        Il testbench non è un circuito ma un programma di test, quindi non ha né ingressi né uscite, quindi va dichiarato il module senza alcun argomento. Tutto quello che fa il testbench è pipare degli stimoli e verificare le uscite del circuito.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/chapt7img8.png}
+        \end{figure}\\ Esempio testbench di un priority encoder 8:3
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/chapt7img9.png}
+        \end{figure}
+        L'istruzione timescale da le unità di tempo di riferimento. ALl'interno dell'initial, \#100 si riferisce ad "aspetta 100 nanosecondi" perché il timescale ha il nanosecondo come unità di misura. La seconda unità di misura, il picosecondo, indica l'ultima cifra significativa da considerare per i valori del testbench. La sesta istruzione serve a collegare i segnali IO del circuito: i segnali collegati agli ingressi del testbench vanno definiti come reg, mentre quelli alle uscite come wire. Questa cosa è intuitiva perché i segnali d'ingresso devono stimolare i blocchi procedurali.
+
+\chapter{Circuiti aritmetici}
+    \section{Richiami sulla rappresentazione dei numeri}
+        Un numero a virgola fissa senza segno si indica con la notazione:
+        \begin{equation}
+            U_{n,m}
+        \end{equation}
+        dove $n$ è la potenza di $2$ assegnata all'MSB della parte intera ed $m$ la potenza \textit{negativa} di $2$ assegnata all'LSB della parte frazionaria. Per esempio $U_{4,3}$ ha MSB di peso $2^{4}$ ed LSB di peso $2^{-3}$, dunque $U_{4,3} \in [0, 31.875]$. \\
+        Per rappresentare invece numeri negativi a virgola fissa c'è il complemento a due. Un numero in complemento a due è indicato con:
+        \begin{equation}
+            Q_{n,m}
+        \end{equation}
+        dove $Q$ ricorda l'insieme dei numeri razionali. I parametri $n$ ed $m$ sono rispettivamente la potenza dell'MSB (numero negativo) e la potenza \textit{negativa} dell'LSB della parte frazionaria
+        \begin{equation}
+            Q_{n,m} = -2^{-n}A_{n+m} \ 2^{n-1}A_{n+m-1} \ \cdots 2^{-(m-1)}A_{1} \ 2^{-m}A_{0} 
+        \end{equation}
+        Per esempio
+        \begin{equation}
+            Q_{2, 0} = 1010 = -2
+        \end{equation}
+    \section{Rappresentazione in Verilog}
+        Nel verilog, un wire può assumere il significato di un segnale o di un numero a seconda del contesto. Se per esempio $A$ è una stringa di $8$ bit che entra in un encoder, allora si starà trattando di un segnale, per esempio un vettore di priorità. Viceversa, se $A$ entra in un sommatore dobbiamo aspettarci che abbia valore aritmetico e non logico.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt10img1.png}
+        \end{figure} \\
+    \section{Addizionatore binario}
+        Un addizionatore binario è un circuito che ritorna la somma aritmetica degli ingressi. I bit di ingresso sono tre, i due operandi $A$ e $B$ ed il bit di riporto in entrata $C_{in}$. I bit di uscita sono la somma $S$, il segnale di overflow $OFL$ ed il riporto in uscita $C_{out}$. Il riporto in uscita può essere usato come l'$n+1$-esimo bit della somma ma non può essere usato per segnalare l'overflow (si può avere OFL con ambo i valori di Carry in uscita). \\
+        Si possono ottenere addizionatori a $2n$ bit mettendone in cascata $2$ da $n$ bit e collegando il $C_{out}$ del primo al $C_{in}$ del secondo. I riporti in entrata degli addizionatori al primo stadio sono posti a massa.
+        
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt10img2.png}
+        \end{figure}
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt10img3.png}
+        \end{figure}
+        \newpage
+        Se ci sono $n$ addizionatori in cascata, il tempo totale di delay tra l'ingresso del primo stadio e l'uscita dell'ultimo è pari a:
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt10img4.png}
+        \end{figure}
+        Un addiziontore del tipo di sopra è detto \textbf{carry ripple}, cioè a propagazione di riporto. Esso consta in $n$ addizionatori ad un bit, con l'uscita che viene presa in parallelo da ogni adder, collegato al precedente tramite il carry out. Questo è il circuito più semplice da realizzare per costruire un addizionatore, ha il minor consumo di potenza dissipata ma è anche il più lento con tempo pari a $T_{CR}$.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/Chapt10img5.png}
+        \end{figure}
+        \\ \\
+        Per la sottrazione, il circuito è lo stesso del sommatore binario. La differenza $A-B$ è scritta come $A+(-B)$ dove $-B$ si ottiene negando $B$ bit per bit ed aggiungendo $1$, per esempio:
+        \begin{equation}
+            1110_{2} = (-2)_{10} \implies 0001_{2}+0001_{2} = 2
+        \end{equation}
+    \section{Topologie di addizionatori per FPGA}
+        La topologia utilizzata per l'adder binario è quella a \textbf{carry ripple} con un piccolo fan-in. I blocchi logici delle moderne FPGA includono logica orientata alla propagazione del riporto, atta ad ottimizzare i collegamenti circuitali dei sommatori a carry ripple. Gli adder a carry ripple occupano molto poco spazio, dunque è possibile trovarne tantissimi anche nei più piccoli FPGA. \\ \\
+        Negli adder carry ripple i bit di carry out dello stadio $n-1$ e di quello $n$ possono essere utilizzati per il check dell'overflow: se entrambi sono alti, allora c'è sicuro overflow:
+        \begin{equation}
+            OFL = C_{out, n-1} \oplus C_{out, n}
+        \end{equation}
+        Le prestazioni del circuito addizionatore si misurano in base al numero di Logic Element impiegati ed il ritardo di CR, entrambi funzione del numero di bit dell'addizionatore:
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt10img5.png}
+        \end{figure}
+    \section{Operazioni comuni}
+        Molto spesso gli ingressi dei circuiti digitali sono numeri rappresentati in virgola ﬁssa ma con un differente numero di bit o con la virgola in posizioni differenti. Le operazioni aritmetiche più comuni sono quelle che trasformano la rappresentazione di un numero eliminando o aggiungendo dei bit a destra o a sinistra della rappresentazione originaria. L’operazione sembra banale ma serve ad allineare la virgola di rappresentazioni diverse, a evitare e controllare i casi di overﬂow, a determinare la precisione di un’operazione aritmetica.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.65\linewidth]{img/chapt10img6.png}
+        \end{figure} \newpage
+        Talvolta si desidera ridurre la precisione di un numero per evitare che il numero di bit del
+        risultato di un calcolo sia troppo grande o per rispettare i vincoli su un interfacciamento,
+        e quindi bisogna eliminare i bit meno signiﬁcativi del numero effettuando un’operazione di
+        troncamento o di arrotondamento. Ad esempio, si utilizza il troncamento o l’arrotondamento
+        se il risultato di un’operazione è su 16 bit mentre il registro nel quale bisogna memorizzare il risultato è da 8 bit.\\
+        Il troncamento è il modo più semplice per eseguire l’operazione e consiste nello eliminare i
+        bit che non si utilizzano. Un minimo di riﬂessione mostra che l’errore dovuto al troncamento è
+        sempre dello stesso segno in quanto si azzerano sempre dei bit con peso positivo.
+        Ritornando all’esempio in cui si eliminano 4 bit il cui LSB ha peso $2^{-5}$ , per effettuare
+        l’operazione di arrotondamento bisogna sommare al numero da troncare il valore $2^{-2}$ prima
+        di eliminare gli ultimi 4 bit. L’errore che si commette varia tra $-0.25$ (quando i 4 bit eliminati sono ‘1000’) a 0.2188 = $2^{-3} +2^{-4} +2^{-5}$ (quando i 4 bit eliminati valgono ‘0111’).
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.65\linewidth]{img/chapt10img7.png}
+        \end{figure}
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.65\linewidth]{img/chapt10img8.png}
+        \end{figure}
+        Per le operazioni di estensione:
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/chapt10img9.png}
+        \end{figure}
+    \section{Moltiplicazioni TBD}
+
+\chapter{Circuiti sequenziali}
+    \section{Introduzione}
+        Circuiti che dipendono anche dal loro stato precedente. Non conviene implementare un circuito sequenziale tramite logica combinatoria, per esempio creando un flip flop dichiarando due inverter e poi collegandoli, ottenendo un \textbf{loop combinatorio}, i quali non vengono risolti né in sintesi né in simulazione. Utilizzeremo i blocchi procedurali con gli \textit{always} block. \\ \\
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.5\linewidth]{img/Chapt11img1.png}
+        \end{figure} \\
+        Prima dell'accensione, il rumore elettronica determina lo stato di $Q_{out}$, il quale si stabilizza una volta iniziato il ciclo. Il flip flop varia il suo stato sul fronte di salita (o di discesa) del clock, ergo nel blocco procedurale ci sarà la sola dipendenza da CK\newpage
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt11img2.png}
+        \end{figure} 
+        Una versione più completa del FF introduce il segnale di Reset, che blocca l'uscita a zero. O lo si fa \textbf{sincrono} oppure \textbf{asincrono}, dunque due circuiti diversi. Nel primo caso, l'effetto del reset lo vedo solo appena il clock si alza, nell'altro caso l'uscita viene cambiata istantaneamente.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt11img3.png}
+        \end{figure}
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt11img4.png}
+        \end{figure} \newpage
+        È importante usare la notazione blocking perché mettendo il minore uguale i due valori di $q$ commutano istantaneamente, mentre il non-blocking segna i valori e li cambia soltanto quando arriva all'istruzione end.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/Chapt11img5.png}
+        \end{figure}
+\chapter{Temporizzazione di circuiti sequenziali}
+    \section{Circuiti sincroni e asincroni}
+        I circuiti sincroni sono temporizzati tutti con lo stesso clock, mentre quelli asincroni no.
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chapt12img1.png}
+        \end{figure}
+        \begin{figure}[h!]
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/chap12img2.png}
+        \end{figure}
+        Il 99\% dei circuiti digitali sono sincroni.
+    \section{Timing dei Flip-Flop}
+        
+\end{document}
