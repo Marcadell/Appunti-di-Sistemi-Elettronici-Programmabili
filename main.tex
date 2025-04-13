@@ -3,11 +3,42 @@
 \usepackage{amsfonts}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+
+
 \title{Sistemi elettronici programmabili}
 \author{Marco C}
 \date{March 2025}
 
+
+
 \begin{document}
+%Verilog color
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{vgreen}{RGB}{104,180,104}
+    \definecolor{vblue}{RGB}{49,49,255}
+    \definecolor{vorange}{RGB}{255,143,102}
+    \lstdefinestyle{verilog-style}
+    {
+        backgroundcolor=\color{backcolour},   
+    commentstyle=\color{vgreen},
+    keywordstyle=\color{vblue},
+    numberstyle=\tiny\color{vorange},
+    stringstyle=\color{vorange},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+    }
+    \lstset{style=verilog-style}
 
 \maketitle
 
@@ -360,16 +391,21 @@
             \centering
             \includegraphics[width=0.5\linewidth]{img/chapt10img9.png}
         \end{figure}
+        
     \section{Moltiplicazioni TBD}
 
 \chapter{Circuiti sequenziali}
     \section{Introduzione}
-        Circuiti che dipendono anche dal loro stato precedente. Non conviene implementare un circuito sequenziale tramite logica combinatoria, per esempio creando un flip flop dichiarando due inverter e poi collegandoli, ottenendo un \textbf{loop combinatorio}, i quali non vengono risolti né in sintesi né in simulazione. Utilizzeremo i blocchi procedurali con gli \textit{always} block. \\ \\
+        Circuiti che dipendono anche dal loro stato precedente. Non conviene 
+        implementare un circuito sequenziale tramite logica combinatoria, per esempio 
+        creando un flip flop dichiarando due inverter e poi collegandoli, ottenendo un 
+        \textbf{loop combinatorio}, i quali non vengono risolti né in sintesi né in 
+        simulazione. Utilizzeremo i blocchi procedurali con gli \textit{always} block. \\ \\
         \begin{figure}[h!]
             \centering
             \includegraphics[width=0.5\linewidth]{img/Chapt11img1.png}
         \end{figure} \\
-        Prima dell'accensione, il rumore elettronica determina lo stato di $Q_{out}$, il quale si stabilizza una volta iniziato il ciclo. Il flip flop varia il suo stato sul fronte di salita (o di discesa) del clock, ergo nel blocco procedurale ci sarà la sola dipendenza da CK\newpage
+        Prima dell'accensione, il rumore elettronico determina lo stato di $Q_{out}$, il quale si stabilizza una volta iniziato il ciclo. Il flip flop varia il suo stato sul fronte di salita (o di discesa) del clock, ergo nel blocco procedurale ci sarà la sola dipendenza da CK\newpage
         \begin{figure}[h!]
             \centering
             \includegraphics[width=0.75\linewidth]{img/chapt11img2.png}
@@ -388,7 +424,153 @@
             \centering
             \includegraphics[width=0.75\linewidth]{img/Chapt11img5.png}
         \end{figure}
-\chapter{Temporizzazione di circuiti sequenziali}
+    \section{Test bench per circuiti sequenziali}
+        A differenza del test bench per i combinatori, per i sequenziali bisogna implementare
+        il clock in un blocco procedurale senza sensitivity list
+        \begin{lstlisting}[language=Verilog]
+localparam period=20; //Clock period is 20ns
+    always
+        begin
+            CLKtb=1'b0;
+            #(period/2.0); //2.0 is needed to obtain a real number
+            CLKtb=1'b1;     
+            #(period/2.0);
+        end
+        \end{lstlisting}
+        Il test bench per un sequenziale si articola in tre momenti:
+        \begin{itemize}
+            \item La simulazione di un circuito sequenziale implica prima di tutto la fase di 
+            reset. È buona pratica che, anche durante la fase di reset, tutti i segnali di input
+            abbiano valore definito. Segue che la parte iniziale del test vector deve contenere
+            le assegnazioni dei segnali di reset per tutti i segnali d'ingresso. 
+            \item La seconda cosa da fare è disattivare il segnale di reset. Per ragioni di leggibilità,
+            ogni volta che un segnale viene modificato, è conveniente ridefinire tutti i segnali di input
+            e dunque è buona pratica riassegnare il valore di ogni segnale al momento della disabilitazione
+            del segnale di reset.
+            \item Durante il terzo momento il segnale di reset è disabilitato, dunque variano
+            soltanto i segnali d'ingresso. È consigliato, sempre per ragioni di leggibilità, di evitare
+            di riassegnare il valore del segnale di reset durante le rimanenti parti della simulazione, durante
+            le quali ci limitiamo a cambiare soltanto il valore dei segnali d'ingresso.
+        \end{itemize}
+        Analizziamo un esempio di assegnazione corretta degli input e del segnale di reset. Il circuito
+        d'esempio ha input $A$ e $B$ su 7 bit, un segnale di controllo $ctrl$ su 3 bit e i segnali di reset e 
+        clear ($CLR$) espressi su singoli bit. È assunto che il segnale di cler sia attivo basso e che i 
+        flip-flop siano sincronizzati sul fronte di salita del clock, generato dal codice scritto sopra.
+        \begin{lstlisting}[language=Verilog]
+initial
+    begin
+    //FASE 1: Reset attivo e valori di default per gli ingressi
+    CLR = 1'b0; //Attivazione del reset
+    A=y'b111_0000; B=7'b0; ctrl=3'b000; 
+    // Assegna un valore ad ogni input. 
+    //E' buona pratica non simulare con segnali indefiniti
+    #(5*period) //Il reset dura cinque periodi di clock
+    #(3*period/4.0); //Opzionale
+                     //Le transizioni di input cominciano ad
+                     //1/4 di periodo dopo il fronte di 
+                     //attivazione, il tempo per il quale
+                     //e' permesso il ritardo logico 
+                     //combinatoriale e' 3/4 di periodo
+    //FASE 2: disattivazione del reset
+    CLR=1'b1; //Reset disattivato
+
+    A=7'b000_0000; B=7'b0; ctrl=3'b000; 
+    // non abbiamo modificato solo A bensi' anche quelli che 
+    // non variano (buona pratica)
+    #period;
+
+    A=7'b000_0000; B=7'b0; ctrl=3'b001;
+    #period;
+
+    A=7'b000_0000; B=7'b101_1111; ctrl=3'b001;
+    #period;
+
+    A=7'b000_0100; B=7'b101_1111; ctrl=3'b000;
+    #period;
+    $stop; // sys-call per terminare la simulazione
+end
+        \end{lstlisting}
+        \newpage
+        \section{Altri circuiti sequenziali}
+        \subsection{D-latch}
+        Non è cosa comune utilizzare un latch in un cicuito ben progettato, perché di solito
+        questi sono il risultato di una descrizione errata. Se un latch è veramente necessario,
+        la descrizione è quella di un blocco procedurale senza il default statement e senza descrivere
+        il comportamento in ogni caso. 
+        \begin{figure}[h!]
+            \center
+            \includegraphics[width=0.75\linewidth]{img/chapt11img10.png}
+        \end{figure}
+        \subsection{Registri}
+            Un registro è un insieme di flip-flop connessi in parallelo, dunque la relativa descrizione
+            in verilog sarà un flip-flop che prende in ingresso un vettore dando in uscita un vettore:
+            \begin{figure}[h!]
+                \begin{center}
+                    \includegraphics[width=0.75\linewidth]{img/chapt11img11.png}
+                \end{center}
+            \end{figure} \\
+            La versione con l'enabler si ottiene con un blocco if: $en ? q<=d : q ;$
+            \newpage
+            \subsection{Registri a scorrimento}
+            I registri a scorrimento (shift register) sono comunemente usati per conservare una sequenza di 
+            dati in ingresso. Il circuito top level mostrato in figura ha un bit d'ingresso ed
+            $n$ "taps", cioè dati conservati.
+            \begin{figure}[h!]
+                \center 
+                \includegraphics[width=0.75\linewidth]{img/chapt11img12.png}
+            \end{figure}
+            Un utilizzo comune degli shift register è quello di ritardare un segnale di $n$ colpi di clock,
+            dove $n$ è il numero di tap del registro.
+            \begin{figure}[h!]
+                \center 
+                \includegraphics[width=0.75\linewidth]{img/chapt11img13.png}
+            \end{figure}
+            \newpage
+            L'implementazione di sopra si può generalizzare al caso di uno shift register con
+            ingressi ad $m$ bit. Di seguito è riportato come esempio l'implementazione di un registro
+            a scorrimento con ingresso a $16$ bit ed $8$ tap.
+            \begin{figure}[h!]
+                \center
+                \includegraphics[width=0.75\linewidth]{img/chapt11img14.png}
+            \end{figure}
+    \subsection{Contatori}
+            I contatori sono parecchio comuni nei circuiti digitali. Sono usati per 
+            sincronizzare differenti sezioni in termini di numero di colpi di clock.
+            Trovano svariate applicazioni: dividere bit in byte/word, determinare i bit di parità,
+            permettere il time delay di segnali
+            Quando non specificato altrimenti dal segnale di controllo, un contatore può contare
+            da $0$ a $2^{n}-1$.
+            \\ La struttura basica di un contatore è quella di un accumulatore, il quale 
+            a sua volta è composto da un addizionatore e da un registro. Contatori più complessi utilizzano
+            segnali per contare fino a valori diversi da $2^{n}-1$, generati aggiungendo strutture MUX.
+            \begin{figure}[h!]
+                \center  
+                \includegraphics[width=0.75\linewidth]{img/chapt11img15.png}
+            \end{figure}
+            \begin{figure}[h!]
+                \center  
+                \includegraphics[width=0.55\linewidth]{img/chapt11img16.png}
+            \end{figure} \newpage
+    Per implementare una versione con limite superiore diverso da $2^{n}-1$, basta aggiungere
+    un altro blocco if che resetta il contatore una volta raggiunto tale limite.
+    \subsection{Accumulatori}
+        È come un contatore, solo che al posto di incrementare l'output di uno ad ogni
+        colpo di clock, incrementa l'output aggiungendo il valore provvisto dall'ingresso.
+    \subsection{Serial adder}
+        Un addizionatore carry ripple è composto da full adder in cascata ed esegue la somma
+        in un singolo colpo di clock. Se si ammette che tale operazione possa essere fatta in più di un
+        colpo di clock, si può pensare ad una topologia che utilizza gli stessi full adder per
+        fare una singola somma, risparmiando una notevole quantità di area. Per fare ciò bisogna
+        passare i bit degli addendi uno alla volta, dunque un adder seriale prende dati d'ingresso da due
+        registri e li somma. Il risultato va in un registro di uscita e viene shiftato di una posizione ad ogni somma
+        che viene fatta. Il carry out va in un flip-flop e viene multiplexato con un segnale newop (nuova operazione):
+        se si sta ancora facendo l'operazione, viene sommato il resto, altrimenti viene settato il carry in a zero e si riparte
+        da capo.
+        \begin{figure}[h!]
+            \center
+            \includegraphics[width=0.75\linewidth]{img/chapt11img17.png}
+        \end{figure}
+    \chapter{Temporizzazione di circuiti sequenziali}
     \section{Circuiti sincroni e asincroni}
         I circuiti sincroni sono temporizzati tutti con lo stesso clock, mentre quelli asincroni no.
         \begin{figure}[h!]
