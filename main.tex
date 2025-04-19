@@ -886,5 +886,103 @@ end
         \end{itemize}
         In genere, la stima accurata in post place and route richiede un sacco di tempo, quindi quelle sulle potenza sono ottimizzazioni
         di second'ordine rispetto al timing, ma comunque importanti per quel che si è scritto.
-        
+\chapter{Macchine a stati finiti}
+    \section{Introduzione}
+        Le macchine (o automi) a stati finiti sono essenziali nei circuiti digitali e si trovano ovunque. Sono rappresentabili 
+        come ASF i decoder, i riconoscitori di sequenze... . Come abbiamo visto per i sommatori, i flip flop e così via, anche gli ASF 
+        hanno le loro tecniche di descrizione dedicate nei vari HDL ed il Verilog che non fa eccezione. Questi strumenti vanno 
+        utilizzati per garantire che il codice sia leggibile da parte di chi lo consulta e ancora prima perché il sintetizzatore deve saper
+        lavorare bene con quello che legge. \\ \\
+    \section{Cosa sono gli automi a stati finiti}
+        Un automa è un sistema con le seguenti proprietà:
+        \begin{itemize}
+            \item \textbf{Dinamico}: evolve nel tempo passando da uno stato all'altro in funzione dei segnali d'ingresso
+            e del suo stato precedente.
+            \item \textbf{Invariante}: a parità di condizioni iniziali e di ingressi, si comporta allo stesso modo
+            \item \textbf{Discreto}: le variabili d'ingresso, di stato e di uscita assumono solo valori discreti.
+        \end{itemize}
+        In ogni istante, un automa assume uno degli stati che compongono l'insieme degli stati. A fronte di un ingresso,
+        l'automa subisce una transizione di stato e generando eventualmente (non necessariamente!)
+        un messaggio d'uscita. Se l'insieme degli stati è finito, l'automa è a \textbf{stati finiti}. Dunque un ASF
+        è un oggetto dinamico, invariante e discreto i cui possibili stati formano un insieme finito, simple as that. La controparte
+        infinita riguarda la teoria della calcolabilità e a noi non interessa. \\ \\
+        Come è intuibile, un'ASF si realizza tramite un circuito sequenziale, perché dipende dallo stato. Per realizzare un riconoscitore 
+        di sequenza, per esempio, servirà un circuito che tiene traccia degli ultimi $n$ bit, compito svolto perfettamente da uno shift-register 
+        ad $n$ tap. \\
+        Per rappresentare un automa ci si serve di un grafo orientato, i cui nodi sono gli stati e le frecce (archi) le transizioni da uno stato all'altro.
+        Accanto agli archi si indicano gli ingressi che determinano le transizioni, mentre le uscite vengono indicate nel caso delle macchine di Moore all'interno
+        di cerchi, mentre nel caso delle macchine di Mealy accanto agli ingressi.
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.6\linewidth]{img/chapt14img1.png}
+        \end{figure}
+        Nella realtà, scegliere una macchina di Mealy o una di Moore può fare la differenza:
+        \begin{itemize}
+            \item Potrebbe essere più facile esprimere un problema in una rappresentazione rispetto che in un'altra
+            \item Mealy risponde più velocemente, ma è più prona a presentare glitch
+            \item Si potrebbe essere vincolati da standard di progetto
+            \item Moore tende ad avere più stati di una macchina di Mealy
+        \end{itemize}
+        Gli automi a stati finiti hanno una limitazione: non esiste alcun ASF capace di prevedere
+        se un dato programma finirà con un dato ingresso. Per esempio, non è possibile creare una macchina che dia 
+        in output $n+1$ uno se gli viene data una serie di $n$ zeri, perché dovrebbe funzionare per ogni $n$ e ciò richiederebbe
+        stati infiniti. \\
+        Le macchine a stati finiti all'atto pratico sono composti da un \textbf{banco di memoria} e da un blocco di \textbf{logica combinatoria}.
+        Un banco di memoria da $n$ bit può reagire in $2^{n}$ differenti modi, dunque ci sono altrettanti possibili stati assumibili dall'automa.
+        Se poi il tempo di lavoro dell'ASF è scandito da un clock, stiamo trattando con \textbf{macchine sincrone}. \\ \\
+        Un ASF è definito a fronte di ciò che abbiamo detto come un insieme di elementi di memoria a due funzioni combinatorie $F$ e $G$,
+        tali che il prossimo stato è $F$(ingresso, stato corrente) e l'uscita è $G$(ingresso, stato corrente).
+        In soldoni, per definire un'ASF occorrono due funzioni, una che determina lo stato e una che determina l'uscita. Per quanto 
+        concerne la funzione d'uscita, si ricava la \textbf{differenza fra Mealy e Moore}: in una macchina di Moore l'uscita dipende solo dallo stato corrente,
+        mentre in una di Mealy sia dall'ingresso che dallo stato corrente. \\ \\
+        Per progettare un automa a stati finiti, bisogna partire dalla descrizione funzionale, come sempre.
+        L'iter è il seguente:
+        \begin{itemize}
+            \item Decisione delle specifiche: cosa deve fare la macchina? Conviene Mealy o Moore? 
+            \item Quali ingressi e quali uscite deve avere la macchina? 
+            \item Creazione del \textbf{bubble diagram}: viene individuato l'insieme degli stati e viene realizzato 
+            il grafo
+            \item Tabella delle transizioni: Versione più completa del bubble diagram, comprende tutte le possibili transizioni 
+            \item Test dell'automa 
+        \end{itemize}
+    Un esempio è riportato sul pacco di slide 8, pgg 19-23
+    \section{Codifica dello stato}
+        Il processo di codifica dello stato consiste nell'associare ad ogni 
+        stato una sequenza di bit da memorizzare nel banco, in sintesi la rappresentazione binaria
+        di tutti i possibili stati del circuito che potrebbero avere significati più astratti. Un esempio con le
+        macchinette del caffè:
+        \begin{itemize}
+            \item Caffè freddo $\to$ 000
+            \item Caffè caldo $\to$ 001
+            \item Caffè corto $\to$ 010
+            \item $\cdots $
+            \item Mocaccino $\to$ 111
+        \end{itemize}
+        e così via. Le possibili codifiche sono infinite perché sono infiniti i significati che uno può 
+        dare ad ogni codifica binaria. Dalla codifica dipende la complessità, la potenza dissipata e la velocità del
+        circuito che implementa l'ASF. \\
+        In VHDL, il sintetizzatore può decidere la codifica di stato tramite l'assegnazione di un identificatore alfanumerico.
+        In altri termini, si scrive direttamente "Caffè freddo", "Caffè caldo",... poi è il VHDL che decide quali simpatici
+        numeretti assegnare. Nel verilog si utilizzano delle stringhe binarie da associare agli stati, dunque è il progettista a decidere.
+        Ovviamente non è detto che si utilizzino tutti gli stati disponibili e conseguentemente ci saranno alcuni stati 
+        "orfani di significato". Questi vanno gestiti a parte perché fanno casino. \\ \\
+        Ci sono vari approcci per la codifica. Il primo è la \textbf{one-hot}, che abbiamo visto nei primi capitoli
+        quando abbiamo parlato dei decoder e degli encoder. Ogni stato ha associato una stringa con un solo $1$ e tutto il resto zero.
+        Dunque per $n$ stati occorrono $n$ flip-flop: lo stato "1" avrà un uno in prima posizione e il resto zeri, il "2" in seconda e così via.
+        Una sua variante è la codica \textbf{zero-one-hot}, la quale per risparmiare un flip-flop associa lo stato con tutti zeri ad uno stato.
+        In entrambi gli approcci, le condizioni nelle quali ci sono stringhe con più di un uno corrispondono ad errori. Tipicamente il segnale con
+        tutti gli zeri viene associato al reset o di "partenza", perché resettando tutti i flip-flop a zero si casca proprio in quello stato.
+        \\ \\
+        Altro approccio è quello della \textbf{Codifica Gray}. Nel codice Gray il codice associato a due numeri 
+        consecutivi differisce sempre di un solo bit, per esempio $000->100->101->001$ e così via. Il Gray aiuta perché,
+        nel caso il circuito abbia una probabilità elevata di attraversare stati consecutivi, il numero di commutazioni dei FF
+        è minimo. L'esempio del caffè qui è istantaneo: Seleziona (000)$->$ paga (100)$->$gusta(101)\footnote{seppur non sia uno stato proprio della macchina}.
+        C'è enorme vantaggio sulla potenza dissipata ed il rumore delle alimentazioni, inoltre sono necessari $\log_{2}(n)$ flip-flop per $n$ stati.
+        Un altro circuito tipico per questo tipo di codifica è il contatore. \\ \\
+        Breve menzione va fatta anche alla \textbf{codifica Johnson}, simile a quella Gray, richiede $n/2$ flip-flop
+        per $n$ stati. 
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.6\linewidth]{img/chapt14img2.png}
+        \end{figure}
 \end{document}
