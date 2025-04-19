@@ -809,4 +809,82 @@ end
         \center 
         \includegraphics[width=0.75\linewidth]{img/chapt12img13.png}
     \end{figure}
+\chapter{Dissipazione di potenza negli FPGA}
+    \section{Introduzione}
+        La dissipazione di potenza è uno dei parametri più importanti da considerare nei circuiti 
+        digitali, perché costituisce un limite. Perché, in particolare, dovrebbe importarci di gestire 
+        la dissipazione di potenza?
+        \begin{itemize}
+            \item \textbf{Per l'utente mobile}: cellulari, fotocamere e qualsiasi altro device mobile ha una batteria,
+            la quale si scarica molto più velocemente se la quantità di potenza dissipata non è ottimizzata
+            \item \textbf{Potenza computazionale}: i circuiti caldi hanno problemi di saturazione di frequenza di lavoro e power throttling 
+            (letteralmente "strozzatura della potenza"), che ne riduce drasticamente le prestazioni 
+            \item \textbf{Inquinamento}: più consumi porta a più sprechi 
+        \end{itemize}
+    Per il progettista, i punti 1 e 3 pongono dei limiti alla potenza media consumata dal circuito, mentre 
+    il punto due alla potenza di picco. Ridurre la potenza di picco consente di ridurre i costi e le dimensioni
+    delle infrastrutture di raffreddamento nei chip che, a fronte della riduzione di potenza media, lavoreranno a temperature
+    più basse. La riduzione della potenza media permette anche di avere alimentatori più piccoli e compatti. Tutto ciò 
+    migliora di gran lunga l'affidabilità del sistema. 
+    \\ \\
+    \section{Calcolo e stima della potenza}
+        Come sappiamo, in un circuito digitale distinguiamo la potenza dissipata statica, legata 
+        soprattutto alle perdite, da quella dinamica, legata all'attività del circuito. 
+        \\ Per quanto concerne la potenza dissipata statica, questa è data dal prodotto fra
+        la corrente $I_{DD}$ che il circuito assorbe dall'alimentazione e l'alimentazione $V_{DD}$.
+        Poiché la corrente può dipendere dallo stato del sistema, se $P(\cdot)$ è la probabilità di stare 
+        in un certo stato:
+        \begin{equation}
+            P_{s} = V_{DD}[P(V_{O}=V_{OL})I_{DD}(V_{0}=V_{OL})+P(V_{O}=V_{OH})I_{DD}(V_{O}=V_{OH})]
+        \end{equation}
+        Mentre quella dinamica è:
+        \begin{equation}
+            P_{D}= \alpha f_{clk}CV_{DD}^{2}
+        \end{equation}
+        dove $C$ è la capacità di carico del nodo, $f_{clk}$ la frequenza di clock ed 
+        $\alpha$ il numero di transizioni da $0 \to 1$ per periodo di clock. Un circuito con molti glitch 
+        ha $\alpha >1$, mentre un nodo con la stessa uscita costante avrà $\alpha = 0$. A causa di ciò,
+        $\alpha$ prende il nome di \textbf{switching activity}. In un circuito FPGA, la dissipazione di potenza 
+        dinamica è data dalla somma di tutte le potenze dinamiche dissipate sui nodi:
+        \begin{equation}
+            P_{d} = f_{clk}V_{DD} ^{2} \sum_{i} ^{N_{\textrm{nodi}}} \alpha_{i}C_{i} 
+        \end{equation}
+        Fare questa cosa a mano è impensabile, per questo esistono dei tool appositi come vivado che 
+        hanno anche funzioni di Power Analysis. Per fare una stima corretta della potenza dissipata bisogna
+        tener conto di sei parametri:
+        \begin{itemize}
+            \item La tensione di alimentazione $V_{DD}$, uniforme per tutti i blocchi 
+            \item La frequenza di clock $f_{clk}$, è decisa in fase di design con tutti i crismi del timing analysis 
+            \item La corrente $I_{DD}(V_{Oi})$ drenata dall'alimentazione verso il blocco i-esimo. Questo
+            termine entra nel computo della potenza soltanto se il blocco in questione è effettivamente utilizzato
+            nella sintesi circuitale. Il contributo che da è affidabile solo post-sintesi, cioè in fase di mapping. 
+            \item Le capacità $C_{i}$ di carico per ogni blocco i-esimo che partecipa alla sintesi circuitale. Dipende 
+            dalle connessioni dei Logic Element (LE) del circuito. Il contributo che da è affidabile solo dopo la 
+            fase di Place and Route. Molto approssimativi nello stimare le capacità delle piste di connessione.
+            \item Il parametro $\alpha_{i}$ per ogni nodo coinvolto, dipende dalla probabilità degli input di ogni LE. Varia 
+            in base allo scenario d'uso.
+            \item La probabilità degli ingressi $P(V_{Oi})$, dipende dallo scenario d'uso.
+        \end{itemize}
+        Gli ultimi tre parametri variano in funzione del caso, dunque vanno fatte delle simulazioni con test vector.
+        \\ \\
+        \textbf{A che punto del flusso di progetto fare le stime?} 
+        \begin{itemize}
+            \item In fase di \textbf{descrizione funzionale} è impossibile
+            \item In fase di \textbf{descrizione RTL} è possibile abbozzare una prima stima molto molto grossolana
+            \item In fase di \textbf{sintesi} si conoscono già i primi tre parametri della lista, mentre le capacità 
+            di carico possono essere stimane basandosi sulla lunghezza media delle piste di connessione all'interno dell'FPGA. Non avendo ancora fatto 
+            simulazioni, si possono assegnare valori standard di probabilità per includere il contributo degli ultimi due, per esempio supponendo che tutti i blocchi logici 
+            commutino una volta al secondo e abbiano in ingresso mediamente lo stesso numero di zero e di uno.
+            \item In \textbf{simulazione post sintesi} si conoscono anche gli ultimi due parametri, la stima è quasi perfetta. L'unica cosa che manca sono i ritardi in simulazione 
+            che potrebbero causare glitch e di conseguenza cambiare le probabilità. Inoltre, la potenza statica dissipata
+            è stimata in modo accurato solo se la simulazione combacia con lo scenario d'uso ed è processata per abbastanza tempo. Per intederci,
+            se deve simulare una macchinetta del caffè è fuorviante fare il test per 500ns con dieci milioni di ingressi, se gli step che la macchina 
+            deve fare sono qualche migliaio (seleziona>paga>sorseggia). 
+            \item Arriviamo allora alla \textbf{Place and Route} nella quale si conoscono tutte le capacità di carico $C_{i}$,
+            perché le connessioni dei blocchi sono fissati. Ora la stima della potenza dinamica dissipata è molto più precisa.
+            \item In fase \textbf{post place and route} si conoscono completamente le probabilità e si ha una stima massimamente precisa.
+        \end{itemize}
+        In genere, la stima accurata in post place and route richiede un sacco di tempo, quindi quelle sulle potenza sono ottimizzazioni
+        di second'ordine rispetto al timing, ma comunque importanti per quel che si è scritto.
+        
 \end{document}
