@@ -583,5 +583,230 @@ end
         \end{figure}
         Il 99\% dei circuiti digitali sono sincroni.
     \section{Timing dei Flip-Flop}
-        
+        I flip flop si comportano come circuiti di campionamento. Il campionamento ideale
+        ed il cambiamento istantaneo del segnale non è possibile. I parametri che determinano
+        il comportamento di timing del flip flop sono:
+        \begin{itemize}
+            \item Il tempo di setup $t_{s}$, intervallo di tempo prima del fronte del clock
+            in cui il dato deve essere stabile 
+            \item Il tempo di hold $t_{h}$, intervallo di tempo dopo il fronte di clock in cui il dato deve essere stabile
+            \item Il tempo di ritardo del clock a $q$ $t_{q}$, il ritardo di propagazione fra il fronte attivo del clock
+            e il segnale $q$, cioè quanto ci mette il FF a variare la sua uscita.
+        \end{itemize}
+        Notare che $t_{q}$ e $t_{h}$ rappresentano due cose diverse: il primo è il tempo necessario
+        affinché lo stato si propaghi in uscita, mentre il secondo il tempo necessario per evitare fluttuazioni
+        di stato del FF prima di aver finito di caricare le capacità d'ingresso del circuito a valle.
+        Vediamo un esempio di timing corretto e scorretto e vediamo in cosa differiscono.
+        Partiamo dal diagramma temporale di un flip-flop e analizziamone i vincoli di setup
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.75\linewidth]{img/chapt12img3.png}
+        \end{figure} \\
+        Nello schema $y$ è l'ingresso e $x$ l'uscita\footnote{Scelta peculiare}
+        L'intervallo di tempo $T_{C,max}$ è il \textbf{ritardo combinatoriale massimo} e dipende
+        dal percorso del segnale e deal numero di porte logiche attraversate dal circuito combinatorio.
+        Come da definizione, il tempo impiegato da $q$ (in questo caso chiamato $x$) per commutare è proprio $t_{q}$
+        \\ \\
+        Facciamo un quadro di ciò che sta accadendo in figura: l'ingresso $y$ varie e dopo $t_{q}$ secondi
+        varia anche lo stato $Q$ del flip-flop, rappresentato dal segnale $x$ in figura. Poi il segnale $x$ entra 
+        nella logica combinatoria e dopo un tempo combinatoriale che è al massimo $T_{C,max}$ questo esce. Il dato 
+        in uscita dalla logica combinatoria deve essere stabile almeno $t_{s}$ secondi prima del prossimo fronte attivo 
+        (in salita nel nostro caso). \\
+        Questo ci porta a definire il primo dei due vincoli, quello di \textbf{setup}. Il vincolo di setup 
+        si calcola fra i due fronti attivi del clock ed è riferito a due circuiti che si passano il dato. Quello che
+        eroga il dato è detto "launching" mentre quello che lo prende in ingresso è il "capturing". Nel
+        disegno di sopra il FF è al tempo stesso launching e capturing, perché lancia il dato e se lo riprende dopo che questo
+        è uscito dalla logica combinatoria. Se $t=0$ corrisponde all'istante in cui c'è il primo fronte attivo e $T$ quello in cui 
+        c'è il secondo, il vincolo di setup è dato da:
+        \begin{equation}
+            T>t_{q}+T_{c,max}+t_{s}
+        \end{equation}
+        questo perché dopo il fronte il dato ci mette $t_{q}+T_{c,max}$ secondi ad uscire dalla logica combinatoria e 
+        deve essere pronto almeno $t_{s}$ secondi prima del prossimo fronte, dunque l'intervallo $T$ deve essere abbastanza largo 
+        per soddisfare questo margine. La differenza fra $T$ ed il valore minimo di $T$ per cui il vincolo di setup è verificato e 
+        è detta \textbf{slack}:
+        \begin{equation}
+            \textrm{T}=T_{C,max}+t_{q}+t_{s}+\textrm{Slack}\implies \textrm{Slack}=T-T_{c,max}-t_{q}-t_{s}
+        \end{equation}
+        Dunque il vincolo di setup da un limite superiore alla frequenza di clock.
+        \\ \\
+        Passiamo ora al vincolo di \textbf{hold}, che si applica su un singolo fronte di clock. Il vincolo di hold è 
+        dato in sostanza dal tempo che serve al flip flop di far propagare il dato che ha già all'interno mentre arriva quello nuovo. In altre 
+        parole, è un vincolo su quanto lento deve andare il segnale in ingresso affinché lo stato precedente sia propagato senza fastidi.
+        \begin{figure}[h!]
+            \center   
+            \includegraphics[width=0.5\linewidth]{img/chapt12img4.png}
+        \end{figure} \\
+        Allora partendo dal fronte di salita devono passare $t_{h}$ secondi dati dal tempo di hold prima che il 
+        dato nuovo arrivi. Tale dato impiega, per arrivare, un tempo minimo dato da $t_{q}+T_{c,min}$, dunque deve verificarsi:
+        \begin{equation}
+            T_{c,min}+t_{q}>t_{h}
+        \end{equation}
+        che come dicevamo prima è una condizione di "lentezza" per i ldato in ingresso.
+        Anche qui si può definire uno slack:
+        \begin{equation}
+            T_{c,min}+t_{q}=t_{h}+\textrm{Slack}
+        \end{equation}
+        Per il vincolo di setup il progettista può procedere ad abbassare la frequenza, mentre per quello di hold si hanno 
+        le mani legate dalla tecnologia, perchè $t_{q}$ e $t_{h}$ sono caratteristiche del FF e $T_{c,min}$ della rete combinatoria, dunque 
+        a priori vanno scelti dei componenti che abbiano tempistiche compatibili. In ogni caso, un FF ben costruito ha il tempo di 
+        propagazione dello stato $t_{q}$ maggiore di quello di hold $t_{h}$. \\ \\
+        Per fare il timing di tutto il sistema e decidere la frequenza massima da utilizzare, si studia caso per caso 
+        il vincolo di setup e di hold e si raccolgono i valori di slack: il più basso determina la frequenza massima di lavoro. Se almeno uno 
+        degli slack ha valore negativo bisogna allungare il periodo di clock, abbassando la frequenza.
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.75\linewidth]{img/chapt12img5.png}
+        \end{figure}
+        Le espressioni riportate in figura discendono dalla banale generalizzazione di quello di cui abbiamo parlato sopra. Se 
+        prendiamo ad esempio il pezzo di percorso $1 \to 3$, ci si rende conto che $1$ lancia e $3$ cattura, quindi il vincolo 
+        di setup deve tenere conto del tempo $t_{q1}$ del lanciatore e del tempo di setup $t_{s3}$ del catturatore, assieme al tempo combinatoriale 
+        massimo del blocco $A$. Per il vincolo di hold, è $t_{h3}$ che pone il vincolo per il dato in ingresso, che per arrivare 
+        da $1$ a $3$ impiega $t_{c,min}+t_{q1}$.
+        \\ \\
+        A chiusura di questa sezione parliamo del Clock skew e gli effetti che questo ha sui vincoli di timing.
+        Finora abbiamo considerato circuiti che hanno tutti lo stesso periodo di clock, ma possiamo pensare di inserire dei 
+        blocchi di ritardo del segnale per dare una versione ritardata del clock in ingresso ad alcuni blocchi del circuito, come 
+        in figura:
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.6\linewidth]{img/chapt12img2.png}
+        \end{figure} \\
+        Il blocco di ritardo posticipa di $\Delta t$ l'inizio dell'intervallo di setup del FF catturatore a destra, 
+        ma al tempo stesso ne riduce quello di hold della stessa quantità:
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.5\linewidth]{img/chapt12img6.png}
+        \end{figure}
+        Se ricalcoliamo il vincolo di setup otteniamo, ipotizzando che i due flip flop siano uguali:
+        \begin{equation}
+                T>t_{q}+T_{c, max}+(t_{s}+\Delta t)
+        \end{equation}
+        Ma al tempo stesso, il vincolo di hold diviene:
+        \begin{equation}
+            t_{q}+T_{c,min}>t_{h}+\Delta t
+        \end{equation}
+        questo perché traslando il clock si trasla anche l'istante per cui il tempo di hold è soddisfatto, visto che come 
+        riferimento $t_{h}$ prende proprio il fronte attivo del clock. In sintesi, il clock skew può essere una risorsa nel caso
+        si abbia molto margine con uno dei due parametri: per esepmio, lo slack del tempo di setup è molto ampio e invece di alzare la frequenza 
+        si vuole puntare sulla robustezza, allora si mette un blocco di ritardo da qualche parte per "donare" tempo di slack al vincolo di hold.
+        \newpage
+        \section{Applicazione al design di FPGA}
+        \subsection*{Cenni agli alberi di clock}
+            Di Flip-Flop all'interno di in un circuito digitale ce ne sono milioni, ragion per la quale pensare 
+            che il clock arrivi in sincronia ovunque è una brutale idealizzazione. Questo è dovuto, oltre al carico capacitivo 
+            non trascurabile di tali circuiti, anche alla lunghezza delle piste fra l'origine del clock e i flip-flop. Per ovviare a 
+            questa cosa, si è pensato di collegare i flip flop ad albero, interponendo dei buffer ogni tot sezioni. Le strutture di questi 
+            alberi sono calcolate tramite algoritmi appositi, fatti girare da programmi dedicati. Si ottiene una maggior omogeneità del clock skew 
+            in giro per il circuito, pagando però un grosso ritardo $T_{clk, buf}$ (legato ai buffer) tra l'origine dell'albero e i suoi punti capillari:
+            \begin{figure}[h!]
+                \center  
+                \includegraphics[width=0.6\linewidth]{img/chapt12img7.png}
+            \end{figure}
+        \subsection*{Pad to pad hold time}
+            Per chi progetta su FPGA il clock tree non è una preoccupazione. Il progettista deve occuparsi però 
+            della scelta opportuna della frequenza di lavoro, perché deve soddisfare sia i tempi di hold e di setup all'interno del circuito 
+            che quelli dovuti all'interazione con circuiteria esterna, che lavora con tempi generalmente diversi. \\
+            Fino ad ora abbiamo ignorato la circuiteria legata al clock e assunto che le equazioni sui vincoli potessero 
+            essere ricavate dai tempi dei segnali in ingresso al flip-flop. Questa assunzione non è sempre corretta perché bisogna fare riferimento 
+            ai punti di circuiteria accessibili al progettista, perché è lì che si possono fare le misure per i vincoli.
+            Nell'immagine che segue confrontiamo una situazione ideale con una reale, che tiene conto del ritardo  
+             dal buffer del clock che fornisce il ritardo $T_{clk, buf}$. Il ritardo di linea è dato da $T_{1}$ e $T_{2}$. Possiamo arbitrariamente inserire
+            un blocco "Delay" di ritardo sulla linea dati:
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.75\linewidth]{img/chapt12img8.png}
+        \end{figure} \\
+        Sotto queste condizioni la condizione di hold diventa:
+        \begin{equation}
+            t_{q, 1}+T_{c,min}+T_{1}+\textrm{Delay}\geq T_{2}+T_{clk,buf}+t_{h2}
+        \end{equation} \\
+        questo perché al tempo di transizione di stato $t_{q1}$ va aggiunto il ritardo di linea, il ritardo del dato (blocco inserito da noi)
+        e quello minimo della rete combinatoria. La somma di questi tre contributi deve essere maggiore del tempo di hold,
+        a cui però va aggiunto il ritardo di clock e quello della rete di sotto $T_{2}$.
+        Assumendo $T_{1}=T_{2}$ e che i flip flop siano uguali si ottiene una relazione indicativa ma abbastanza accurata per il vincolo di hold:
+        \begin{equation}
+            t_{q}+T_{c,min}+\textrm{Delay} \geq T_{clk, buf}+t_{h}
+        \end{equation}
+        Il blocco di delay è arbitrario e lo si può scegliere in modo da essere comparabile al ritardo dovuto al buffer, ottenendo:
+        \begin{equation}
+            t_{q}+T_{c,min} \geq t_{h}
+        \end{equation}
+        \subsection*{Aggiunta di un Delay Locked Loop}
+        La situazione può essere migliorata ulteriormente per quanto concerne il tempo di hold 
+        aggiungendo un DLL (Delay Locked Loop) come nello schema in figura:
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.75\linewidth]{img/chapt12img9.png}
+        \end{figure}
+        In questo caso non abbiamo inserito il blocco di delay, bensì un blocco DLL retroazionato che stabilizza il ritardo
+        un ritardo sulla linea di clock dato da: $T_{DLL}=T_{2}-T_{clk,buf}$. Assumendo sempre $T_{2} = T_{1} = T$ e 
+        FF uguali, il vincolo sul tempo di hold diventa:
+        \begin{equation}
+            t_{q}+T_{c,min}+T_{1} \geq t_{h}+T_{2}+(T_{2}-T_{clk, buf})+T_{clk,buf}
+        \end{equation}
+        \begin{equation}
+            \implies t_{q}+T_{c,min} \geq T+t_{h}
+        \end{equation}
+        Poiché il clock è periodico di $T$, la condizione si riduce a:
+        \begin{equation}
+            t_{q}+T_{c,min} \geq t_{h}
+        \end{equation}
+        In altre parole, tramite il circuito di clock management basato su DLL possiamo far rispettare il vincolo 
+        di hold per due circuiti diversi che comunicano fra di loro in modo stabile e configurabile per diversi valori di ritardo 
+        di linea di clock.
+    \section*{Management tramite clock gating}
+        La terza e ultima tecnica che vediamo per la gestione dei vincoli di timing è basata 
+        sulla tecnica del clock gating. Per clock gating si ci riferisce a quelle tecniche che utilizzano 
+        logica combinatoria per sincronizzare solo alcune parti del circuito. Anni fa, utilizzare 
+        il clock gating era un casino a causa degli ulteriori ritardi introdotti dalla logica circuitale e dal pericolo
+        di generare glitch. Al giorno d'oggi sono indispensabili per azzerare la frequenza di lavoro delle parti inutilizzate del circuito
+        e sincronizzare i ritardi. La loro robustezza è cresciuta molto grazie ai software che tengono conto dei ritardi nativi 
+        di questi elementi circuitali. Lo schema a cui facciamo riferimento è il seguente:
+        \begin{figure}[h!]
+            \center  
+            \includegraphics[width=0.75\linewidth]{img/chapt12img10.png}
+        \end{figure} \\
+        Si vede già dallo schema che il clock gating infastidisce il tempo di hold, perché introdurrà un 
+        ritardo di natura combinatoria al clock che aumenterà il tempo di hold totale. Se partiamo dall'inizio, 
+        grazie all'albero di clock i due segnali $Ck_{1}$ e $Ck_{2}$ sono sincronizzati, quindi il paragone va fatto a 
+        partire da quei due punti li. Il tempo che ci mette il dato lanciato ad arrivare è $t_{q}+T_{c,min}$, mentre quello 
+        dato dall'hold sarà $t_{h}+T_{GATING}$. In definitiva:
+        \begin{equation}
+            t_{q}+T_{c,min} \geq T_{GATING}+t_{h} = t_{h,eff}
+        \end{equation} 
+        dove $t_{h,eff}=T_{GATING}+t_{h}$ è il tempo di hold "efficace". Il gating incide anche sul tempo di 
+        setup, che assume la forma seguente:
+        \begin{equation}
+            T>t_{q}+T_{c,max}+t_{s}-T_{GATING} \implies T>t_{q}+T_{c,max}+t_{s,eff}
+        \end{equation}
+        che ha parecchio senso se si tiene conto del fatto che se peggiora l'hold a causa di
+        un ritardo del clock migliora il setup, come abbiamo visto in precedenza.
+    \newpage
+    \section{Timing analysis in vivado}
+    Per il timing analysis in vivado, dobbiamo creare una risorsa .xdc per gestire il clock.
+    In questo file dobbiamo essenzialmente dire a vivado di associare un clock virtuale all'ingresso
+    di clock del nostro programma, così che possa verificare se i vincoli sono rispettati:
+    \begin{figure}[h!]
+        \center  
+        \includegraphics[width=0.7\linewidth]{img/chapt12img11.png}
+    \end{figure} \\
+    Questo comando cosa fa? Crea un oggetto clock $(create \_ clock)$, lo aggiunge se non esiste già (-add)
+    e gli da il nome di $sys \_ clk \_ pin \ \ (-name sys\_clk\_pin)$, con periodo 10.00timescale (-period 10.00) con
+    duty cycle del 50\% (-waveform \{0 5\}) assegnandolo al segnale di clk  dichiarato nel file verilog (il "programma"),
+    tramite il comando $[get\_ports\{clk\}]$.
+
+    Concludiamo con un esempio. Consideriamo una situazione reale, dove ci sono due 
+    registri che comunicano un ingresso alla nostra IP (Intellectual Property, in pratica il circuito), che li 
+    elabora e li risputa fuori in pasto ad un altro circuito.
+    \begin{figure}[h!]
+        \center  
+        \includegraphics[width=0.6\linewidth]{img/chapt12img12.png}
+    \end{figure} \\
+    Dobbiamo tenere conto dei valori minimi e massimi di ritardo per i segnali di ingresso (A, B e il reset)
+    e i valori minimi e massimi per quelli di uscita (P nel nostro caso). Allora il file .xdc si espande come segue:
+    \begin{figure}[h!]
+        \center 
+        \includegraphics[width=0.75\linewidth]{img/chapt12img13.png}
+    \end{figure}
 \end{document}
